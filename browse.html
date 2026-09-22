@@ -1,0 +1,334 @@
+{{ $nonce := uuidv4 -}}
+{{ $nonceAttribute := print "nonce=" (quote $nonce) -}}
+{{ $csp := printf "default-src 'none'; img-src 'self' data:; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'none'; script-src 'nonce-%s'; style-src 'self' 'unsafe-inline'; frame-ancestors 'self'; form-action 'self';" $nonce -}}
+{{ .RespHeader.Set "Content-Security-Policy" $csp -}}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{html .Name}} · admin · cdn.thisdev.space</title>
+<style {{ $nonceAttribute }}>
+	:root {
+		color-scheme: light dark;
+		--bg: #f6f7f8;
+		--panel: #ffffff;
+		--ink: #1c1f22;
+		--muted: #667;
+		--line: #d7dbdf;
+		--accent: #0e72c5;
+		--ok: #1a7f37;
+		--err: #b3261e;
+	}
+	@media (prefers-color-scheme: dark) {
+		:root {
+			--bg: #14181b;
+			--panel: #1c2226;
+			--ink: #e7eaec;
+			--muted: #9aa4ab;
+			--line: #2c343a;
+			--accent: #63b0ec;
+			--ok: #5cba7d;
+			--err: #ef7d76;
+		}
+	}
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		background: var(--bg);
+		color: var(--ink);
+		font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+	}
+	header {
+		border-bottom: 1px solid var(--line);
+		background: var(--panel);
+	}
+	.wrap { max-width: 1100px; margin: 0 auto; padding: 16px 20px; }
+	.crumbs { font-size: 13px; color: var(--muted); word-break: break-all; }
+	.crumbs a { color: var(--accent); text-decoration: none; }
+	.crumbs a:hover { text-decoration: underline; }
+	.crumbs .sep { margin: 0 5px; color: var(--line); }
+	h1 { font-size: 18px; margin: 6px 0 0; font-weight: 600; }
+	h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; }
+	main { padding-top: 20px; }
+	.panel {
+		background: var(--panel);
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		padding: 16px;
+		margin-bottom: 18px;
+	}
+	.mermaid { margin: 0; overflow-x: auto; text-align: center; }
+	.drop {
+		border: 2px dashed var(--line);
+		border-radius: 10px;
+		padding: 28px 16px;
+		text-align: center;
+		color: var(--muted);
+		transition: border-color .15s, background .15s;
+	}
+	.drop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+	button {
+		font: inherit;
+		cursor: pointer;
+		border: 1px solid var(--line);
+		background: var(--panel);
+		color: var(--ink);
+		padding: 6px 12px;
+		border-radius: 8px;
+	}
+	button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+	button:disabled { opacity: .5; cursor: default; }
+	#drop button { border: none; padding: 0; color: var(--accent); text-decoration: underline; background: none; }
+	#progress { list-style: none; margin: 14px 0 0; padding: 0; font-size: 13px; }
+	#progress li { padding: 3px 0; color: var(--muted); }
+	#progress li.ok { color: var(--ok); }
+	#progress li.err { color: var(--err); }
+	.actions { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+	#sync-info { font-size: 13px; color: var(--muted); }
+	table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+	th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+	th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+	tr:last-child td { border-bottom: none; }
+	td.name a { color: var(--accent); text-decoration: none; word-break: break-all; }
+	td.name a:hover { text-decoration: underline; }
+	tr.dir td.name a { font-weight: 600; }
+	td.size, td.time { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+	td.empty { text-align: center; color: var(--muted); padding: 24px; }
+</style>
+</head>
+<body>
+<header>
+	<div class="wrap">
+		<div class="crumbs">
+			{{- range $i, $crumb := .Breadcrumbs -}}
+				{{- if $i}}<span class="sep">/</span>{{end -}}
+				<a href="{{html $crumb.Link}}">{{html $crumb.Text}}</a>
+			{{- end -}}
+		</div>
+		<h1>admin · cdn.thisdev.space</h1>
+	</div>
+</header>
+<main class="wrap">
+	<section class="panel">
+		<h2>Arquitetura</h2>
+		<pre class="mermaid">{{ `flowchart LR
+  U["Visitante"] -->|GET| CDN["cdn.thisdev.space"]
+  A["Admin"] -->|basic_auth| ADM["admin.thisdev.space"]
+  ADM -->|"browse + upload PUT"| DAV["WebDAV"]
+  DAV -->|grava| S["/srv/cdn"]
+  CDN -->|file_server| S
+  L["content/ local"] -->|rsync| S
+  CI["GitHub Actions"] -->|"binario + config"| VPS["Caddy (systemd)"]` }}</pre>
+	</section>
+
+	<section class="panel">
+		<h2>Upload</h2>
+		<div id="drop" class="drop">Arraste arquivos aqui ou <button type="button" id="pick">escolher arquivos</button></div>
+		<input id="file" type="file" multiple hidden>
+		<ul id="progress"></ul>
+	</section>
+
+	<div class="actions">
+		<button type="button" id="sync">⟳ Sync</button>
+		<span id="sync-info"></span>
+	</div>
+
+	<table>
+		<thead>
+			<tr>
+				<th>Nome</th>
+				<th>Tamanho</th>
+				<th>Modificado</th>
+			</tr>
+		</thead>
+		<tbody id="rows">
+		{{- range .Items}}
+			<tr class="file{{if .IsDir}} dir{{end}}">
+				<td class="name"><a href="{{html .URL}}">{{html .Name}}</a></td>
+				<td class="size">{{if .IsDir}}—{{else}}{{.HumanSize}}{{end}}</td>
+				<td class="time"><time datetime="{{.HumanModTime "2006-01-02T15:04:05Z"}}">{{.HumanModTime "2006-01-02 15:04"}}</time></td>
+			</tr>
+		{{- end}}
+		</tbody>
+	</table>
+</main>
+
+<script {{ $nonceAttribute }}>
+	// @license magnet:?xt=urn:btih:8e4f440f4c65981c5bf93c76d35135ba5064d8b7&dn=apache-2.0.txt Apache-2.0
+	(function () {
+		"use strict";
+
+		const SELF = document.currentScript;
+		const NONCE = SELF ? SELF.nonce : "";
+		const DIR = location.pathname.endsWith("/") ? location.pathname : location.pathname + "/";
+
+		const rowsEl = document.getElementById("rows");
+		const dropEl = document.getElementById("drop");
+		const fileEl = document.getElementById("file");
+		const pickEl = document.getElementById("pick");
+		const progressEl = document.getElementById("progress");
+		const syncBtn = document.getElementById("sync");
+		const infoEl = document.getElementById("sync-info");
+
+		function humanSize(n) {
+			if (!n) return "0 B";
+			const units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
+			let i = 0, v = n;
+			while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+			return (i === 0 ? v : v.toFixed(1)) + " " + units[i];
+		}
+
+		function renderItems(items) {
+			rowsEl.replaceChildren();
+			if (!items || !items.length) {
+				const tr = document.createElement("tr");
+				const td = document.createElement("td");
+				td.colSpan = 3;
+				td.className = "empty";
+				td.textContent = "Diretório vazio";
+				tr.appendChild(td);
+				rowsEl.appendChild(tr);
+				return;
+			}
+			for (const it of items) {
+				const tr = document.createElement("tr");
+				tr.className = "file" + (it.is_dir ? " dir" : "");
+
+				const tdName = document.createElement("td");
+				tdName.className = "name";
+				const a = document.createElement("a");
+				a.href = it.url;
+				a.textContent = it.name;
+				tdName.appendChild(a);
+
+				const tdSize = document.createElement("td");
+				tdSize.className = "size";
+				tdSize.textContent = it.is_dir ? "—" : humanSize(it.size);
+
+				const tdTime = document.createElement("td");
+				tdTime.className = "time";
+				const d = new Date(it.mod_time);
+				tdTime.textContent = isNaN(d) ? "" : d.toLocaleString();
+
+				tr.append(tdName, tdSize, tdTime);
+				rowsEl.appendChild(tr);
+			}
+		}
+
+		async function sync() {
+			if (syncBtn) syncBtn.disabled = true;
+			if (infoEl) infoEl.textContent = "sincronizando…";
+			try {
+				const res = await fetch(DIR + location.search, {
+					headers: { "Accept": "application/json" },
+					credentials: "same-origin",
+					cache: "no-store"
+				});
+				if (!res.ok) throw new Error("HTTP " + res.status);
+				renderItems(await res.json());
+				if (infoEl) infoEl.textContent = "sincronizado às " + new Date().toLocaleTimeString();
+			} catch (err) {
+				if (infoEl) infoEl.textContent = "falha no sync: " + err.message;
+			} finally {
+				if (syncBtn) syncBtn.disabled = false;
+			}
+		}
+
+		function upload(file) {
+			return new Promise(function (resolve) {
+				const li = document.createElement("li");
+				li.textContent = file.name + " — 0%";
+				progressEl.appendChild(li);
+
+				const xhr = new XMLHttpRequest();
+				xhr.open("PUT", DIR + encodeURIComponent(file.name));
+				xhr.upload.onprogress = function (e) {
+					if (e.lengthComputable) {
+						li.textContent = file.name + " — " + Math.round(e.loaded / e.total * 100) + "%";
+					}
+				};
+				xhr.onload = function () {
+					if (xhr.status < 300) {
+						li.textContent = file.name + " — enviado";
+						li.className = "ok";
+					} else {
+						li.textContent = file.name + " — erro " + xhr.status;
+						li.className = "err";
+					}
+					resolve();
+				};
+				xhr.onerror = function () {
+					li.textContent = file.name + " — erro de rede";
+					li.className = "err";
+					resolve();
+				};
+				xhr.send(file);
+			});
+		}
+
+		async function handleFiles(list) {
+			for (const f of Array.from(list || [])) {
+				await upload(f);
+			}
+			await sync();
+		}
+
+		if (pickEl) pickEl.addEventListener("click", function () { fileEl.click(); });
+		if (fileEl) fileEl.addEventListener("change", function () { handleFiles(fileEl.files); });
+		if (dropEl) {
+			dropEl.addEventListener("dragover", function (e) { e.preventDefault(); dropEl.classList.add("over"); });
+			dropEl.addEventListener("dragleave", function () { dropEl.classList.remove("over"); });
+			dropEl.addEventListener("drop", function (e) {
+				e.preventDefault();
+				dropEl.classList.remove("over");
+				handleFiles(e.dataTransfer.files);
+			});
+		}
+		if (syncBtn) syncBtn.addEventListener("click", sync);
+
+		function renderMermaid() {
+			if (!window.mermaid) return;
+			const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+			window.mermaid.initialize({
+				startOnLoad: false,
+				theme: dark ? "dark" : "default",
+				securityLevel: "strict"
+			});
+			window.mermaid.run({ querySelector: ".mermaid" }).catch(function () {});
+		}
+
+		function loadMermaid() {
+			function load(src) {
+				return new Promise(function (resolve, reject) {
+					const s = document.createElement("script");
+					s.nonce = NONCE;
+					s.src = src;
+					s.onload = resolve;
+					s.onerror = reject;
+					document.head.appendChild(s);
+				});
+			}
+			load("/vendor/mermaid/mermaid.min.js")
+				.then(renderMermaid)
+				.catch(function () {
+					return load("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js")
+						.then(renderMermaid)
+						.catch(function () {});
+				});
+		}
+
+		function localizeTimes() {
+			document.querySelectorAll("time[datetime]").forEach(function (el) {
+				const d = new Date(el.getAttribute("datetime"));
+				if (!isNaN(d)) el.textContent = d.toLocaleString();
+			});
+		}
+
+		localizeTimes();
+		loadMermaid();
+	})();
+	// @license-end
+</script>
+</body>
+</html>

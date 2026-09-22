@@ -1,0 +1,53 @@
+# Production Caddyfile — CDN thisdev.space
+# Installed at /etc/caddy/Caddyfile ; env loaded from /etc/caddy/cdn.env
+# Reload with: systemctl reload caddy   (or sudo /usr/local/bin/cdn-apply)
+{
+	email {$ACME_EMAIL:admin@thisdev.space}
+	order webdav before file_server
+}
+
+# ---------------------------------------------------------------------------
+# Público — listagem FECHADA (não lista diretórios, só entrega arquivos)
+# ---------------------------------------------------------------------------
+{$CDN_HOST:cdn.thisdev.space} {
+	root * /srv/cdn
+	encode zstd gzip
+
+	# Cache curto por padrão para assets "não versionados"
+	@assets path *.css *.js *.mjs *.map *.woff *.woff2 *.ttf *.otf \
+ *.png *.jpg *.jpeg *.gif *.webp *.avif *.svg *.ico *.json
+	header @assets Access-Control-Allow-Origin "*"
+	header @assets Cache-Control "public, max-age=86400"
+	header X-Content-Type-Options nosniff
+
+	# Cache imutável para arquivos com hash no nome (ex.: site.a1b2c3d4.css)
+	@hashed path_regexp hashed \.[0-9a-f]{8,}\.[a-z0-9]+$
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+	# sem `browse` => diretórios retornam 404
+	file_server
+}
+
+# ---------------------------------------------------------------------------
+# Admin — UI de visualização (browse) + WebDAV (upload), protegido
+# ---------------------------------------------------------------------------
+{$ADMIN_HOST:admin.thisdev.space} {
+	root * /srv/cdn
+	encode zstd gzip
+
+	basic_auth {
+		{$ADMIN_USER:admin} {$ADMIN_PASSWORD_HASH}
+	}
+
+	header Cache-Control "no-store"
+	header X-Content-Type-Options nosniff
+
+	# GET/HEAD -> listagem custom (browse.html). Demais métodos -> WebDAV (PUT/...)
+	@get method GET HEAD
+	route {
+		file_server @get {
+			browse /etc/caddy/browse.html
+		}
+		webdav
+	}
+}

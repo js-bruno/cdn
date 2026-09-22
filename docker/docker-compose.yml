@@ -1,0 +1,25 @@
+# OPTIONAL Docker path (the documented/default deploy is native systemd).
+# Run from the repo root:  docker compose -f docker/docker-compose.yml up -d --build
+services:
+  cdn:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: cdn-caddy:local
+    container_name: cdn
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ../content:/srv/cdn
+      - ../browse.html:/etc/caddy/browse.html:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

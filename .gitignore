@@ -1,0 +1,15 @@
+# Secrets / local env
+.env
+
+# Served content (real assets stay OUT of git; see content.example/)
+content/
+
+# devenv / nix
+.devenv/
+.direnv/
+result
+result-*
+
+# local build artifacts
+bin/
+*.log

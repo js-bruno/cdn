@@ -1,0 +1,5 @@
+# Narrow sudo rights for the CDN deploy group.
+# Installed as /etc/sudoers.d/cdn-deploy (mode 0440) by setup-server.sh.
+Cmnd_Alias CDN_APPLY = /usr/local/bin/cdn-apply
+Cmnd_Alias CDN_SYSTEMCTL = /usr/bin/systemctl reload caddy, /usr/bin/systemctl restart caddy, /usr/bin/systemctl start caddy, /usr/bin/systemctl stop caddy, /usr/bin/systemctl status caddy
+%cdn-deploy ALL=(root) NOPASSWD: CDN_APPLY, CDN_SYSTEMCTL

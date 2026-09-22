@@ -1,0 +1,4 @@
+/* exemplo de asset versionado (hash no nome => cache imutável na CDN) */
+:root { --brand: #0e72c5; }
+body { font-family: system-ui, sans-serif; margin: 0; }
+.brand { color: var(--brand); }
