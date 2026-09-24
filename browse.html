@@ -49,6 +49,65 @@
 	.crumbs a:hover { text-decoration: underline; }
 	.crumbs .sep { margin: 0 5px; color: var(--line); }
 	h1 { font-size: 18px; margin: 6px 0 0; font-weight: 600; }
+	.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+	.header-actions { display: flex; gap: 8px; }
+	.crumbs .root { font-weight: 600; }
+	.crumbs .current { color: var(--ink); font-weight: 600; }
+	.panel[hidden] { display: none; }
+	.icon-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 40px;
+		height: 40px;
+		padding: 0;
+		border-radius: 10px;
+	}
+	.icon-btn svg { width: 20px; height: 20px; }
+	.icon-btn[aria-expanded="true"] {
+		border-color: var(--accent);
+		color: var(--accent);
+		background: color-mix(in srgb, var(--accent) 10%, transparent);
+	}
+	.embed-block { margin-bottom: 14px; }
+	.embed-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+	.embed-label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+	.embed-block pre {
+		margin: 0;
+		padding: 12px;
+		background: var(--bg);
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		overflow-x: auto;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+		font-size: 13px;
+		line-height: 1.5;
+		white-space: pre-wrap;
+		word-break: break-all;
+	}
+	.copy { font-size: 12px; padding: 4px 8px; }
+	.row-code {
+		border: none;
+		background: none;
+		color: var(--muted);
+		cursor: pointer;
+		padding: 0 6px;
+		font: inherit;
+		opacity: 0;
+		transition: opacity .12s;
+	}
+	tr:hover .row-code { opacity: 1; }
+	.row-code:hover { color: var(--accent); }
+	.embed-row { display: flex; gap: 8px; margin-bottom: 12px; }
+	.embed-row input {
+		flex: 1;
+		font: inherit;
+		padding: 8px 10px;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--bg);
+		color: var(--ink);
+	}
 	h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; }
 	main { padding-top: 20px; }
 	.panel {
@@ -99,18 +158,43 @@
 </head>
 <body>
 <header>
-	<div class="wrap">
-		<div class="crumbs">
-			{{- range $i, $crumb := .Breadcrumbs -}}
-				{{- if $i}}<span class="sep">/</span>{{end -}}
-				<a href="{{html $crumb.Link}}">{{html $crumb.Text}}</a>
-			{{- end -}}
+	<div class="wrap topbar">
+		<div class="brand">
+			<div class="crumbs">
+				<a href="/" class="root" title="raiz">cdn</a>
+				{{- range $i, $crumb := .Breadcrumbs -}}
+					{{- if $i -}}
+						<span class="sep">/</span>
+						{{- if $crumb.Link -}}
+							<a href="{{html $crumb.Link}}">{{html $crumb.Text}}</a>
+						{{- else -}}
+							<span class="current">{{html $crumb.Text}}</span>
+						{{- end -}}
+					{{- end -}}
+				{{- end -}}
+			</div>
+			<h1>admin · cdn.thisdev.space</h1>
 		</div>
-		<h1>admin · cdn.thisdev.space</h1>
+		<div class="header-actions">
+			<button type="button" id="toggle-embed" class="icon-btn" aria-expanded="false" aria-controls="embed-panel" title="Como carregar no site">
+				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<polyline points="16 18 22 12 16 6"></polyline>
+					<polyline points="8 6 2 12 8 18"></polyline>
+				</svg>
+			</button>
+			<button type="button" id="toggle-arch" class="icon-btn" aria-expanded="false" aria-controls="arch-panel" title="Mostrar arquitetura">
+				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<rect x="3" y="3" width="6" height="6" rx="1"></rect>
+					<rect x="15" y="3" width="6" height="6" rx="1"></rect>
+					<rect x="15" y="15" width="6" height="6" rx="1"></rect>
+					<path d="M9 6h6M6 9v6a3 3 0 0 0 3 3h6"></path>
+				</svg>
+			</button>
+		</div>
 	</div>
 </header>
 <main class="wrap">
-	<section class="panel">
+	<section class="panel" id="arch-panel" hidden>
 		<h2>Arquitetura</h2>
 		<pre class="mermaid">{{ `flowchart LR
   U["Visitante"] -->|GET| CDN["cdn.thisdev.space"]
@@ -129,6 +213,34 @@
 		<ul id="progress"></ul>
 	</section>
 
+	<section class="panel" id="embed-panel" hidden>
+		<h2>Como carregar no site</h2>
+		<div class="embed-row">
+			<input id="embed-path" type="text" placeholder="caminho do arquivo (ex.: css/site.a1b2c3d4.css)" spellcheck="false">
+		</div>
+		<div class="embed-block">
+			<div class="embed-head">
+				<span class="embed-label">URL pública</span>
+				<button type="button" class="copy" data-target="embed-url-code">Copiar</button>
+			</div>
+			<pre><code id="embed-url-code">—</code></pre>
+		</div>
+		<div class="embed-block">
+			<div class="embed-head">
+				<span class="embed-label">HTML</span>
+				<button type="button" class="copy" data-target="embed-html">Copiar</button>
+			</div>
+			<pre><code id="embed-html">—</code></pre>
+		</div>
+		<div class="embed-block">
+			<div class="embed-head">
+				<span class="embed-label">JavaScript</span>
+				<button type="button" class="copy" data-target="embed-js">Copiar</button>
+			</div>
+			<pre><code id="embed-js">—</code></pre>
+		</div>
+	</section>
+
 	<div class="actions">
 		<button type="button" id="sync">⟳ Sync</button>
 		<span id="sync-info"></span>
@@ -145,7 +257,7 @@
 		<tbody id="rows">
 		{{- range .Items}}
 			<tr class="file{{if .IsDir}} dir{{end}}">
-				<td class="name"><a href="{{html .URL}}">{{html .Name}}</a></td>
+				<td class="name"><a href="{{html .URL}}">{{html .Name}}</a>{{if not .IsDir}}<button type="button" class="row-code" data-path="{{html .Name}}" title="Como carregar este arquivo">&lt;/&gt;</button>{{end}}</td>
 				<td class="size">{{if .IsDir}}—{{else}}{{.HumanSize}}{{end}}</td>
 				<td class="time"><time datetime="{{.HumanModTime "2006-01-02T15:04:05Z"}}">{{.HumanModTime "2006-01-02 15:04"}}</time></td>
 			</tr>
@@ -170,6 +282,15 @@
 		const progressEl = document.getElementById("progress");
 		const syncBtn = document.getElementById("sync");
 		const infoEl = document.getElementById("sync-info");
+		const archBtn = document.getElementById("toggle-arch");
+		const archPanel = document.getElementById("arch-panel");
+		const embedBtn = document.getElementById("toggle-embed");
+		const embedPanel = document.getElementById("embed-panel");
+		const embedPathEl = document.getElementById("embed-path");
+		const embedUrlCode = document.getElementById("embed-url-code");
+		const embedHtml = document.getElementById("embed-html");
+		const embedJs = document.getElementById("embed-js");
+		const PUBLIC_HOST = "https://cdn.thisdev.space";
 
 		function humanSize(n) {
 			if (!n) return "0 B";
@@ -201,6 +322,15 @@
 				a.href = it.url;
 				a.textContent = it.name;
 				tdName.appendChild(a);
+				if (!it.is_dir) {
+					const btn = document.createElement("button");
+					btn.type = "button";
+					btn.className = "row-code";
+					btn.dataset.path = it.name;
+					btn.title = "Como carregar este arquivo";
+					btn.textContent = "</>";
+					tdName.appendChild(btn);
+				}
 
 				const tdSize = document.createElement("td");
 				tdSize.className = "size";
@@ -325,8 +455,105 @@
 			});
 		}
 
+		let mermaidStarted = false;
+		function openArch() {
+			const show = archPanel.hidden;
+			archPanel.hidden = !show;
+			if (archBtn) archBtn.setAttribute("aria-expanded", show ? "true" : "false");
+			if (!archPanel.hidden && !mermaidStarted) {
+				mermaidStarted = true;
+				loadMermaid();
+			}
+		}
+
+		if (archBtn) archBtn.addEventListener("click", openArch);
+
+		if (embedBtn) {
+			embedBtn.addEventListener("click", function () {
+				const show = embedPanel.hidden;
+				embedPanel.hidden = !show;
+				embedBtn.setAttribute("aria-expanded", show ? "true" : "false");
+			});
+		}
+
+		function extOf(name) {
+			const m = String(name || "").toLowerCase().match(/\.([a-z0-9]+)$/);
+			return m ? m[1] : "";
+		}
+		function cleanPath(p) {
+			return String(p || "").replace(/^\/+/, "").replace(/^\.\//, "");
+		}
+		function updateEmbed(raw) {
+			const p = cleanPath(raw);
+			if (!p) {
+				embedUrlCode.textContent = "—";
+				embedHtml.textContent = "—";
+				embedJs.textContent = "—";
+				return;
+			}
+			const url = PUBLIC_HOST + "/" + p;
+			embedUrlCode.textContent = url;
+			const e = extOf(p);
+			const isImg = ["png", "jpg", "jpeg", "webp", "svg", "gif", "avif", "ico"].includes(e);
+			const isCss = e === "css";
+			const isJs = e === "js" || e === "mjs";
+			let html, js;
+			if (isCss) {
+				html = '<link rel="stylesheet" href="' + url + '">';
+			} else if (isJs) {
+				html = '<script src="' + url + '" defer><\/script>';
+			} else if (isImg) {
+				html = '<img src="' + url + '" alt="" loading="lazy">';
+			} else {
+				html = '<a href="' + url + '">baixar</a>';
+			}
+			js = isJs
+				? "const mod = await import('" + url + "');"
+				: "const res = await fetch('" + url + "');\nconst data = await res.text();";
+			embedHtml.textContent = html;
+			embedJs.textContent = js;
+		}
+		function flashCopy(btn) {
+			const original = btn.textContent;
+			btn.textContent = "Copiado!";
+			setTimeout(function () { btn.textContent = original; }, 1200);
+		}
+
+		if (embedPathEl) {
+			embedPathEl.addEventListener("input", function () { updateEmbed(embedPathEl.value); });
+		}
+		document.addEventListener("click", function (e) {
+			const copyBtn = e.target.closest(".copy");
+			if (copyBtn) {
+				const code = document.getElementById(copyBtn.dataset.target);
+				if (!code) return;
+				const text = code.textContent;
+				const done = function () { flashCopy(copyBtn); };
+				if (navigator.clipboard && navigator.clipboard.writeText) {
+					navigator.clipboard.writeText(text).then(done, function () {});
+				} else {
+					const ta = document.createElement("textarea");
+					ta.value = text;
+					document.body.appendChild(ta);
+					ta.select();
+					try { document.execCommand("copy"); } catch (err) {}
+					ta.remove();
+					done();
+				}
+				return;
+			}
+			const rowBtn = e.target.closest(".row-code");
+			if (rowBtn) {
+				updateEmbed(DIR + rowBtn.dataset.path);
+				if (embedPanel) {
+					embedPanel.hidden = false;
+					if (embedBtn) embedBtn.setAttribute("aria-expanded", "true");
+					embedPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+				}
+			}
+		});
+
 		localizeTimes();
-		loadMermaid();
 	})();
 	// @license-end
 </script>

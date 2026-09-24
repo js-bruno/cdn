@@ -45,6 +45,9 @@ in
         echo "rode 'cdn-build' primeiro — o plugin webdav é necessário para validar" >&2
         exit 1
       fi
+      # placeholder: a validação de sintaxe não depende do .env real
+      export ADMIN_USER="''${ADMIN_USER:-admin}"
+      export ADMIN_PASSWORD_HASH="''${ADMIN_PASSWORD_HASH:-\$2a\$14\$ElSZylEefArGp0wbfqTDZORvtkb1GgaGVsWBJtFWhgfBThsmZzItK}"
       bin/caddy validate --config Caddyfile --adapter caddyfile
     '';
 
@@ -68,7 +71,7 @@ in
     echo "  cdn-hash      -> gera bcrypt para ADMIN_PASSWORD_HASH"
     echo "  cdn-fmt       -> formata os Caddyfiles"
     echo "  cdn-validate  -> valida o Caddyfile de produção"
-    echo "  cdn-dev       -> sobe Caddy local (:8080 público, :8081 admin)"
+    echo "  cdn-dev       -> sobe Caddy local (:18080 público, :18081 admin)"
     echo "  cdn-deploy    -> publica content/ no VPS (DEPLOY_HOST)"
   '';
 }

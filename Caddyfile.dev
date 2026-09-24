@@ -1,12 +1,12 @@
 # Local dev Caddyfile. Run from the repo root with: cdn-dev
-#   http://localhost:8080  -> público (sem browse, segue a listagem fechada)
-#   http://localhost:8081  -> admin (browse + upload + Sync), SEM auth (localhost)
+#   http://localhost:18080  -> público (sem browse, segue a listagem fechada)
+#   http://localhost:18081  -> admin (browse + upload + Sync), SEM auth (localhost)
 {
 	order webdav before file_server
 	auto_https off
 }
 
-http://localhost:8080 {
+http://localhost:18080 {
 	root * ./content
 	encode zstd gzip
 
@@ -21,7 +21,7 @@ http://localhost:8080 {
 	file_server
 }
 
-http://localhost:8081 {
+http://localhost:18081 {
 	root * ./content
 	encode zstd gzip
 

@@ -17,7 +17,7 @@ DEPLOY_USER="${DEPLOY_USER:-deploy}"
 DEPLOY_GROUP="cdn-deploy"
 CONTENT_DIR="/srv/cdn"
 CONF_DIR="/etc/caddy"
-STAGE_DIR="/opt/cdn"
+STAGE_DIR="/home/lacon/cdn"
 DATA_DIR="/var/lib/caddy"
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -50,7 +50,13 @@ fi
 echo "==> directories"
 install -d -m 2775 -o caddy -g "$DEPLOY_GROUP" "$CONTENT_DIR"
 install -d -m 0755 -o caddy -g caddy "$DATA_DIR" "$DATA_DIR/.local/share" "$DATA_DIR/.config"
-install -d -m 0755 -o root -g root "$CONF_DIR" "$STAGE_DIR"
+install -d -m 0755 -o root -g root "$CONF_DIR"
+if id "$DEPLOY_USER" >/dev/null 2>&1; then
+	install -d -m 0755 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$STAGE_DIR"
+else
+	install -d -m 0755 "$STAGE_DIR"
+	echo "    NOTE: create '$STAGE_DIR' owned by the deploy user before CI"
+fi
 
 echo "==> systemd unit"
 install -m 0644 -o root -g root "$REPO_DIR/deploy/systemd/caddy.service" /etc/systemd/system/caddy.service
@@ -97,8 +103,10 @@ cat <<EOF
 
 bootstrap done.
 
-Next (first deploy) — push the binary + config from your machine or CI:
-    rsync -avz ./caddy Caddyfile browse.html deploy/ $DEPLOY_USER@<vps>:$STAGE_DIR/
+Next (first deploy) — push to GitHub main; the workflow builds the binary,
+copies caddy/Caddyfile/browse.html to $STAGE_DIR and runs cdn-apply.
+Manual equivalent:
+    rsync -avz ./caddy Caddyfile browse.html $DEPLOY_USER@<vps>:$STAGE_DIR/
     ssh $DEPLOY_USER@<vps> 'sudo /usr/local/bin/cdn-apply'
 
 Then publish content (stays out of git):

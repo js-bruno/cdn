@@ -30,7 +30,7 @@ flowchart LR
 ```
 cdn/
 ├── Caddyfile                  # produção (cdn/admin.thisdev.space)
-├── Caddyfile.dev              # local (:8080 público, :8081 admin)
+├── Caddyfile.dev              # local (:18080 público, :18081 admin)
 ├── browse.html                # template do admin (lista + upload + Sync + Mermaid)
 ├── devenv.nix / devenv.yaml   # dev local
 ├── content.example/           # amostra versionada da árvore servida
@@ -52,11 +52,11 @@ Requer Nix + devenv.
 devenv shell
 cdn-build      # compila ./bin/caddy COM o plugin webdav (xcaddy)
 cdn-seed       # content.example/ -> content/
-cdn-dev        # http://localhost:8080 (público) e :8081 (admin)
+cdn-dev        # http://localhost:18080 (público) e :18081 (admin)
 ```
 
-No admin local (`:8081`) o `basic_auth` é omitido (só localhost). Teste:
-`curl -i http://localhost:8080/css/` deve retornar **404** (listagem fechada).
+No admin local (`:18081`) o `basic_auth` é omitido (só localhost). Teste:
+`curl -i http://localhost:18080/css/` deve retornar **404** (listagem fechada).
 
 Formatar/validar:
 
@@ -74,14 +74,14 @@ Pré-requisito: apontar os DNS `A` de `cdn.thisdev.space` e
 scp -r . root@<vps>:/root/cdn      # ou clone o repo no VPS
 ssh root@<vps>
 cd /root/cdn
-DEPLOY_USER=deploy deploy/scripts/setup-server.sh
+DEPLOY_USER=lacon deploy/scripts/setup-server.sh
 ```
 
 O script:
 
 - instala pacotes (`ca-certificates curl rsync ufw apache2-utils`);
 - cria usuário de sistema `caddy`, grupo `cdn-deploy` e os diretórios
-  `/srv/cdn`, `/etc/caddy`, `/var/lib/caddy`, `/opt/cdn`;
+  `/srv/cdn`, `/etc/caddy`, `/var/lib/caddy`, `/home/lacon/cdn`;
 - instala a unit `caddy.service`, o helper `/usr/local/bin/cdn-apply` e a regra
   `sudoers.d/cdn-deploy`;
 - gera `/etc/caddy/cdn.env` com **usuário/senha do admin** (senha aleatória,
@@ -92,21 +92,19 @@ O script:
 
 ## Deploy do código (GitHub Actions)
 
-Push em `main` (tocando `Caddyfile`, `browse.html`, `deploy/**`) dispara o
-workflow, que:
+Push em `main` dispara o workflow (mesmo padrão do `spotify-in-github`), que:
 
-1. compila o Caddy com o plugin `mholt/caddy-webdav@fa2f366…`;
-2. faz `rsync` do binário + configs para `/opt/cdn` na VPS;
-3. roda `sudo /usr/local/bin/cdn-apply` (instala e `reload`/`restart` o Caddy).
+1. compila o Caddy com o plugin `mholt/caddy-webdav@fa2f366…` (static, linux amd64);
+2. copia `caddy` + `Caddyfile` + `browse.html` para `/home/lacon/cdn` via `appleboy/scp-action`;
+3. roda `sudo /usr/local/bin/cdn-apply` (instala em `/usr/local/bin/caddy` + `/etc/caddy` e `reload`/`restart` o Caddy) via `appleboy/ssh-action`.
 
-Configure os secrets do repositório:
+Configure o **environment `prod`** no GitHub com os secrets:
 
 | Secret | Descrição |
 |---|---|
 | `VPS_HOST` | IP/host da VPS |
-| `VPS_USER` | usuário com sudo (grupo `cdn-deploy`) |
+| `VPS_USER` | usuário com sudo (grupo `cdn-deploy`) — `lacon` |
 | `VPS_SSH_KEY` | chave privada SSH (ed25519) |
-| `VPS_SSH_PORT` | opcional (padrão `22`) |
 
 O `.env`/hash do admin **fica apenas na VPS** e nunca vai para o CI.
 
@@ -116,7 +114,7 @@ Dois caminhos — nenhum deles versiona assets:
 
 1. **rsync manual**
    ```sh
-   export DEPLOY_HOST=deploy@<vps>
+   export DEPLOY_HOST=lacon@<vps>
    deploy/scripts/deploy-rsync.sh            # envia content/ -> /srv/cdn
    ```
 2. **UI do admin** — abra `https://admin.thisdev.space/`, arraste os arquivos
@@ -146,8 +144,8 @@ docker compose -f docker/docker-compose.yml up -d --build
 ## Manutenção
 
 ```sh
-ssh deploy@<vps> sudo systemctl status caddy
-ssh deploy@<vps> sudo systemctl reload caddy
+ssh lacon@<vps> sudo systemctl status caddy
+ssh lacon@<vps> sudo systemctl reload caddy
 journalctl -u caddy -f
 ```
 
@@ -155,5 +153,5 @@ Editar a senha do admin: gere o hash e atualize `/etc/caddy/cdn.env`.
 
 ```sh
 deploy/scripts/gen-hash.sh 'nova-senha'    # copie para ADMIN_PASSWORD_HASH
-ssh deploy@<vps> 'sudo /usr/local/bin/cdn-apply'
+ssh lacon@<vps> 'sudo /usr/local/bin/cdn-apply'
 ```

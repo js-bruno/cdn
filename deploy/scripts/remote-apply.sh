@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
 # Installed on the VPS as /usr/local/bin/cdn-apply (root, via sudo).
-# Applies the staged code in /opt/cdn (binary + Caddyfile + browse.html) and
-# (re)loads the caddy systemd service. Only CODE is deployed here — content
+# Applies the staged code in /home/lacon/cdn (binary + Caddyfile + browse.html)
+# and (re)loads the caddy systemd service. Only CODE is deployed here — content
 # lives in /srv/cdn and arrives via rsync/upload.
 #
 set -euo pipefail
 
-STAGE_DIR="${STAGE_DIR:-/opt/cdn}"
+STAGE_DIR="${STAGE_DIR:-/home/lacon/cdn}"
 BIN_SRC="$STAGE_DIR/caddy"
 BIN_DST="/usr/local/bin/caddy"
 CONF_DIR="/etc/caddy"
