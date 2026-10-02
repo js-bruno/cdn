@@ -7,6 +7,10 @@
 #
 set -euo pipefail
 
+# Optional: first argument is the bcrypt hash for the admin password. When set,
+# it updates ADMIN_PASSWORD_HASH in $ENV_FILE (source of truth: CI secret).
+ADMIN_HASH_ARG="${1:-}"
+
 STAGE_DIR="${STAGE_DIR:-/home/lacon/cdn}"
 BIN_SRC="$STAGE_DIR/caddy"
 BIN_DST="/usr/local/bin/caddy"
@@ -51,6 +55,15 @@ EOF
 	chown root:caddy "$ENV_FILE"
 	chmod 0640 "$ENV_FILE"
 	log "cdn-apply: WARNING created $ENV_FILE with placeholder — set ADMIN_PASSWORD_HASH"
+fi
+
+if [ -n "$ADMIN_HASH_ARG" ]; then
+	if grep -q '^ADMIN_PASSWORD_HASH=' "$ENV_FILE"; then
+		sed -i "s|^ADMIN_PASSWORD_HASH=.*|ADMIN_PASSWORD_HASH=${ADMIN_HASH_ARG}|" "$ENV_FILE"
+	else
+		echo "ADMIN_PASSWORD_HASH=${ADMIN_HASH_ARG}" >> "$ENV_FILE"
+	fi
+	log "cdn-apply: admin password hash updated"
 fi
 
 # content dir owned by caddy with the deploy group (setgid) so both can write

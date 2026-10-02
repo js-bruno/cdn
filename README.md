@@ -85,7 +85,8 @@ O script:
 - instala a unit `caddy.service`, o helper `/usr/local/bin/cdn-apply` e a regra
   `sudoers.d/cdn-deploy`;
 - gera `/etc/caddy/cdn.env` com **usuário/senha do admin** (senha aleatória,
-  também salva em `/root/cdn-admin-credentials.txt`);
+  também salva em `/root/cdn-admin-credentials.txt`); no primeiro deploy o CI
+  **sobrescreve** a senha com o secret `ADMIN_PASSWORD`;
 - libera `80/443/443udp` no `ufw`.
 
 > A VPS **não** precisa de Go/xcaddy: o binário é compilado no CI.
@@ -105,8 +106,11 @@ Configure o **environment `prod`** no GitHub com os secrets:
 | `VPS_HOST` | IP/host da VPS |
 | `VPS_USER` | usuário com sudo (grupo `cdn-deploy`) — `lacon` |
 | `VPS_SSH_KEY` | chave privada SSH (ed25519) |
+| `ADMIN_PASSWORD` | senha do admin (o CI gera o bcrypt e aplica na VPS) |
 
-O `.env`/hash do admin **fica apenas na VPS** e nunca vai para o CI.
+O hash do admin é calculado no CI a partir de `ADMIN_PASSWORD` e gravado em
+`/etc/caddy/cdn.env` no deploy; a senha nunca fica versionada nem em texto puro
+na VPS (só o bcrypt).
 
 ## Publicar conteúdo (fora do Git)
 
