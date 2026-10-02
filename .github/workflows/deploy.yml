@@ -15,12 +15,12 @@ jobs:
       - name: Setup golang
         uses: actions/setup-go@v6
         with:
-          go-version: '1.24.4'
+          go-version: '1.26.8'
 
       - name: Build caddy with webdav
         run: |
-          go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 "$(go env GOPATH)/bin/xcaddy" build \
+          go install github.com/caddyserver/xcaddy/cmd/xcaddy@v0.4.7
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 "$(go env GOPATH)/bin/xcaddy" build v2.11.6 \
             --with "github.com/mholt/caddy-webdav@fa2f366b0d75e54c2e381c0aefc3a8df8bf5794b" \
             --output caddy
 
