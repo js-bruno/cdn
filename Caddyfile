@@ -36,7 +36,7 @@
 	encode zstd gzip
 
 	basic_auth {
-		{$ADMIN_USER:admin} 9911
+		{$ADMIN_USER:admin} {$ADMIN_PASSWORD_HASH}
 	}
 
 	header Cache-Control "no-store"
